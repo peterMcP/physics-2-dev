@@ -20,4 +20,8 @@ public:
 	SDL_Texture* circle;
 	SDL_Texture* box;
 	SDL_Texture* rick;
+
+	p2List<PhysBody*> circleList;
+	p2List<PhysBody*> boxList;
+	p2List<PhysBody*> chainList;
 };
