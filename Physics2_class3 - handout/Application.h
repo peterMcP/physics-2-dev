@@ -20,7 +20,7 @@ public:
 	ModuleWindow* window;
 	ModuleTextures* textures;
 	ModuleInput* input;
-	//ModuleAudio* audio;
+	ModuleAudio* audio;
 	ModulePlayer* player;
 	ModuleSceneIntro* scene_intro;
 	ModulePhysics* physics;

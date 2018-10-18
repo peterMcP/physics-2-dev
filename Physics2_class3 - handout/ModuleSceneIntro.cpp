@@ -26,7 +26,7 @@ bool ModuleSceneIntro::Start()
 	circle = App->textures->Load("pinball/wheel.png"); 
 	box = App->textures->Load("pinball/crate.png");
 	rick = App->textures->Load("pinball/rick_head.png");
-	//bonus_fx = App->audio->LoadFx("pinball/bonus.wav");
+	bonus_fx = App->audio->LoadFx("pinball/bonus.wav");
 
 	// TODO: Homework - create a sensor
 
@@ -48,11 +48,18 @@ update_status ModuleSceneIntro::Update()
 	{
 		circles.add(App->physics->CreateCircle(App->input->GetMouseX(), App->input->GetMouseY(), 25));
 		// TODO 8: Make sure to add yourself as collision callback to the circle you creates
+		circles.getLast()->data->listener = this;
 	}
 
 	if(App->input->GetKey(SDL_SCANCODE_2) == KEY_DOWN)
 	{
 		boxes.add(App->physics->CreateRectangle(App->input->GetMouseX(), App->input->GetMouseY(), 100, 50));
+	}
+	
+	if (App->input->GetKey(SDL_SCANCODE_4) == KEY_DOWN)
+	{
+		boxes.add(App->physics->CreateSensorRect(App->input->GetMouseX(), App->input->GetMouseY(), 100, 50));
+		boxes.getLast()->data->listener = this;
 	}
 
 	if(App->input->GetKey(SDL_SCANCODE_3) == KEY_DOWN)
@@ -138,3 +145,22 @@ update_status ModuleSceneIntro::Update()
 }
 
 // TODO 8: Now just define collision callback for the circle and play bonus_fx audio
+
+void ModuleSceneIntro::OnCollision(PhysBody* a, PhysBody* b)
+{
+
+	for (b2Fixture* f = a->body->GetFixtureList(); f; f = f->GetNext())
+	{
+		switch (f->GetType())
+		{
+		case b2Shape::e_circle:
+			App->audio->PlayFx(bonus_fx);
+			break;
+		}
+
+		if (f->IsSensor())
+			LOG("SENSOR");
+	}
+
+
+}

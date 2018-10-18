@@ -32,6 +32,8 @@ bool ModulePhysics::Start()
 	world = new b2World(b2Vec2(GRAVITY_X, -GRAVITY_Y));
 	// TODO 3: You need to make ModulePhysics class a contact listener
 
+	world->SetContactListener(this);
+
 	// big static circle as "ground" in the middle of the screen
 	int x = SCREEN_WIDTH / 2;
 	int y = SCREEN_HEIGHT / 1.5f;
@@ -59,11 +61,26 @@ update_status ModulePhysics::PreUpdate()
 	world->Step(1.0f / 60.0f, 6, 2);
 
 	// TODO: HomeWork
-	/*
+	
 	for(b2Contact* c = world->GetContactList(); c; c = c->GetNext())
 	{
+		if (c->GetFixtureA()->IsSensor() && c->IsTouching())
+		{
+			PhysBody* bodyA = (PhysBody*)c->GetFixtureA()->GetBody()->GetUserData();
+			PhysBody* bodyB = (PhysBody*)c->GetFixtureB()->GetBody()->GetUserData();
+				
+			if (bodyB && bodyA->listener != nullptr)
+			{
+				bodyA->listener->OnCollision(bodyA, bodyB);
+			}
+			if (bodyB && bodyB->listener != nullptr)
+			{
+				bodyB->listener->OnCollision(bodyB, bodyA);
+			}
+
+		}
 	}
-	*/
+	
 
 	return UPDATE_CONTINUE;
 }
@@ -87,6 +104,7 @@ PhysBody* ModulePhysics::CreateCircle(int x, int y, int radius)
 	// TODO 4: Add a pointer to PhysBody as UserData to the body
 	PhysBody* pbody = new PhysBody();
 	pbody->body = b;
+	b->SetUserData(pbody);
 	pbody->width = pbody->height = radius;
 
 	return pbody;
@@ -110,6 +128,33 @@ PhysBody* ModulePhysics::CreateRectangle(int x, int y, int width, int height)
 
 	PhysBody* pbody = new PhysBody();
 	pbody->body = b;
+	b->SetUserData(pbody);
+	pbody->width = width * 0.5f;
+	pbody->height = height * 0.5f;
+
+	return pbody;
+}
+
+PhysBody* ModulePhysics::CreateSensorRect(int x, int y, int width, int height)
+{
+	b2BodyDef body;
+	body.type = b2_staticBody;
+	body.position.Set(PIXEL_TO_METERS(x), PIXEL_TO_METERS(y));
+
+	b2Body* b = world->CreateBody(&body);
+	b2PolygonShape box;
+	box.SetAsBox(PIXEL_TO_METERS(width) * 0.5f, PIXEL_TO_METERS(height) * 0.5f);
+
+	b2FixtureDef fixture;
+	fixture.shape = &box;
+	//fixture.density = 1.0f;
+	fixture.isSensor = true;
+
+	b->CreateFixture(&fixture);
+
+	PhysBody* pbody = new PhysBody();
+	pbody->body = b;
+	b->SetUserData(pbody);
 	pbody->width = width * 0.5f;
 	pbody->height = height * 0.5f;
 
@@ -144,6 +189,7 @@ PhysBody* ModulePhysics::CreateChain(int x, int y, int* points, int size)
 
 	PhysBody* pbody = new PhysBody();
 	pbody->body = b;
+	b->SetUserData(pbody);
 	pbody->width = pbody->height = 0;
 
 	return pbody;
@@ -270,6 +316,7 @@ bool PhysBody::Contains(int x, int y) const
 	
 	for (b2Fixture* f = body->GetFixtureList(); f; f = f->GetNext())
 	{
+		//f->GetShape
 		//switch (f->GetType())
 		//{
 			// Draw circles ------------------------------------------------
@@ -288,9 +335,52 @@ int PhysBody::RayCast(int x1, int y1, int x2, int y2, float& normal_x, float& no
 	// if hit, fill normal_x and normal_y and return the distance between x1,y1 and its colliding point
 	int ret = -1;
 
+	b2RayCastInput input;
+	input.p1.Set(PIXEL_TO_METERS(x1), PIXEL_TO_METERS(y1));
+	input.p2.Set(PIXEL_TO_METERS(x2), PIXEL_TO_METERS(y2));
+
+	b2RayCastOutput output;
+	for (b2Fixture* f = body->GetFixtureList(); f; f = f->GetNext())
+	{
+		//A child index is included for chain shapes because the ray cast will only
+		//check a single edge at a time.
+		bool hit = f->RayCast(&output, input, 0); // child index 0
+		if (hit)
+		{
+			normal_x = output.normal.x;
+			normal_y = output.normal.y;
+
+			b2Vec2 hitPoint = input.p1 + output.fraction * (input.p2 - input.p1);
+
+			b2Vec2 result = hitPoint - input.p1;
+
+			ret = sqrt(result.x * result.x + result.y * result.y);
+
+		}
+	}
+
+
 	return ret;
 }
 
 // TODO 3
+void ModulePhysics::BeginContact(b2Contact* contact)
+{
+	PhysBody* bodyA = (PhysBody*)contact->GetFixtureA()->GetBody()->GetUserData();
+	PhysBody* bodyB = (PhysBody*)contact->GetFixtureB()->GetBody()->GetUserData();
+
+	if (bodyA && bodyA->listener != nullptr)
+	{
+		bodyA->listener->OnCollision(bodyA, bodyB);
+	}
+
+	if (bodyB && bodyB->listener != nullptr)
+	{
+		bodyB->listener->OnCollision(bodyB, bodyA);
+	}
+
+
+}
 
 // TODO 7: Call the listeners that are not NULL
+
