@@ -54,6 +54,8 @@ private:
 
 	bool debug;
 	b2World* world;
-	b2MouseJoint* mouse_joint;
+	b2MouseJoint* mouse_joint = nullptr;
 	b2Body* ground;
+	b2Body* clickedBody = nullptr;
+
 };

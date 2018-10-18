@@ -267,6 +267,16 @@ update_status ModulePhysics::PostUpdate()
 			// TODO 1: If mouse button 1 is pressed ...
 			// App->input->GetMouseButton(SDL_BUTTON_LEFT) == KEY_DOWN
 			// test if the current body contains mouse position
+
+			if (App->input->GetMouseButton(SDL_BUTTON_LEFT) == KEY_DOWN)
+			{
+				if (f->GetShape()->TestPoint(b->GetTransform(), b2Vec2(PIXEL_TO_METERS(App->input->GetMouseX()), PIXEL_TO_METERS(App->input->GetMouseY()))))
+				{
+					LOG("intouch");
+					clickedBody = b;
+				}
+			}
+				
 		}
 	}
 
@@ -274,11 +284,46 @@ update_status ModulePhysics::PostUpdate()
 	// so we can pull it around
 	// TODO 2: If a body was selected, create a mouse joint
 	// using mouse_joint class property
+	if (clickedBody != nullptr && mouse_joint == nullptr)
+	{
+		b2MouseJointDef def;
+		def.bodyA = ground;
+		def.bodyB = clickedBody;
+		def.target = b2Vec2(PIXEL_TO_METERS(App->input->GetMouseX()), PIXEL_TO_METERS(App->input->GetMouseY()));
+		def.dampingRatio = 0.5f;
+		def.frequencyHz = 2.0f;
+		def.maxForce = 100.0f * clickedBody->GetMass();
+		mouse_joint = (b2MouseJoint*)world->CreateJoint(&def);
+	}
 
 
 	// TODO 3: If the player keeps pressing the mouse button, update
 	// target position and draw a red line between both anchor points
+	if (App->input->GetMouseButton(SDL_BUTTON_LEFT) == KEY_REPEAT)
+	{
+		if (clickedBody != nullptr)
+		{
 
+			b2Vec2 newPos;
+			newPos.x = PIXEL_TO_METERS(App->input->GetMouseX());
+			newPos.y = PIXEL_TO_METERS(App->input->GetMouseY());
+
+			mouse_joint->SetTarget(newPos);
+
+			App->renderer->DrawLine(METERS_TO_PIXELS(mouse_joint->GetAnchorA().x), METERS_TO_PIXELS(mouse_joint->GetAnchorA().y),
+				METERS_TO_PIXELS(mouse_joint->GetAnchorB().x), METERS_TO_PIXELS(mouse_joint->GetAnchorB().y), 255, 13, 255, 255);
+			
+		}
+	}
+	else if (App->input->GetMouseButton(SDL_BUTTON_LEFT) == KEY_UP)
+	{
+		if (mouse_joint && clickedBody != nullptr)
+		{
+			world->DestroyJoint(mouse_joint);
+			mouse_joint = nullptr;
+			clickedBody = nullptr;
+		}
+	}
 	// TODO 4: If the player releases the mouse button, destroy the joint
 
 	return UPDATE_CONTINUE;
